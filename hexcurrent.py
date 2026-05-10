@@ -398,7 +398,7 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
 
         self._auto_mode = False
         self._auto_done = False
-        self._auto_start_ms = None
+        self._auto_elapsed_ms = 0
         self._auto_results = []
         self._auto_last_current_ma = 0
         self._auto_last_voltage_mv = 0
@@ -481,7 +481,11 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
             last_time = now
 
     def _background_update(self, _delta):
+        if self._auto_mode and not self._auto_done:
+            self._auto_elapsed_ms = min(self._auto_elapsed_ms + _delta, self.capture_seconds * 1000)
         if self._ina226 is None:
+            if self._auto_mode and not self._auto_done and self._auto_elapsed_ms >= self.capture_seconds * 1000:
+                self._finish_auto_capture()
             return
         self._sample_sensor_in_background()
 
@@ -547,18 +551,16 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
 
     def _sample_sensor_in_background(self):
         sample = self._ina226.read_sample_if_ready() if self._ina226 is not None else None
+        capture_complete = self._auto_mode and not self._auto_done and self._auto_elapsed_ms >= self.capture_seconds * 1000
         if sample is not None:
             self._apply_reading(sample)
             self.refresh = True
-            if self._auto_mode and not self._auto_done and self._auto_start_ms is not None:
-                elapsed_ms = time.ticks_diff(time.ticks_ms(), self._auto_start_ms)
-                self._record_auto_sample(elapsed_ms, sample)
-                if elapsed_ms >= self.capture_seconds * 1000:
+            if self._auto_mode and not self._auto_done:
+                self._record_auto_sample(self._auto_elapsed_ms, sample)
+                if capture_complete:
                     self._finish_auto_capture()
-        elif self._auto_mode and not self._auto_done and self._auto_start_ms is not None:
-            elapsed_ms = time.ticks_diff(time.ticks_ms(), self._auto_start_ms)
-            if elapsed_ms >= self.capture_seconds * 1000:
-                self._finish_auto_capture()
+        elif capture_complete:
+            self._finish_auto_capture()
 
     def _record_auto_sample(self, elapsed_ms, sample):
         current_ma = int(sample.get("mA", 0))
@@ -574,7 +576,7 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
 
         self._auto_mode = True
         self._auto_done = False
-        self._auto_start_ms = time.ticks_ms()
+        self._auto_elapsed_ms = 0
         self._auto_results = []
         self._auto_max_current_ma = max(abs(int(self._reading.get("mA", 0))), 1)
         self._auto_max_voltage_mv = max(abs(int(self._reading.get("mV", 0))), 1)
@@ -586,16 +588,15 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
     def _finish_auto_capture(self):
         if not self._auto_mode or self._auto_done:
             return
-        if self._auto_start_ms is not None and not self._auto_results and self._reading:
-            elapsed_ms = time.ticks_diff(time.ticks_ms(), self._auto_start_ms)
-            self._record_auto_sample(elapsed_ms, self._reading)
+        if not self._auto_results and self._reading:
+            self._record_auto_sample(self._auto_elapsed_ms, self._reading)
         self._auto_done = True
         self.refresh = True
 
     def _enter_manual_mode(self):
         self._auto_mode = False
         self._auto_done = False
-        self._auto_start_ms = None
+        self._auto_elapsed_ms = 0
         self._auto_results = []
         self._auto_max_current_ma = 1
         self._auto_max_voltage_mv = 1
@@ -851,8 +852,7 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
         if self._auto_done:
             ctx.rgb(*_TEXT_COLOUR).move_to(-45, chart_top - 25).text("Complete")
         else:
-            elapsed_ms = time.ticks_diff(time.ticks_ms(), self._auto_start_ms) if self._auto_start_ms is not None else 0
-            progress = min(100, (elapsed_ms * 100) // max(self.capture_seconds * 1000, 1))
+            progress = min(100, (self._auto_elapsed_ms * 100) // max(self.capture_seconds * 1000, 1))
             ctx.rgb(*_TEXT_COLOUR).move_to(-45, chart_top - 25).text(f"Rec {progress}%")
 
         ctx.font_size = label_font_size - 8
