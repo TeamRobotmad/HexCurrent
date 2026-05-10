@@ -2,8 +2,6 @@
 
 Standalone EEPROM-side app source for the Team RobotMad HexCurrent hexpansion.
 
-This repository starts from the HexTest EEPROM app as a functional baseline, but the app itself has been refocused around one job: monitoring the INA226 current and voltage sensor on a HexCurrent board.
-
 HexCurrent is intended for badge hexpansion developers who need to measure real-world current draw from a Hexpansion Under Test. The board sits between the badge and the device under test, passes through the normal hexpansion signals, and exposes an INA226 so the companion app can show live current and voltage and record time-series capture data.
 
 ## What This Repo Contains
@@ -32,8 +30,6 @@ The current implementation provides:
 - CSV export of recorded samples.
 - Optional save-to-hexpansion-filesystem support when the app is running from the HexCurrent EEPROM.
 
-The app intentionally does not retain the HexTest wheel-speed, pulse counter, motor-control, or HexDrive integration paths.
-
 ## Building
 
 Compile the EEPROM app with `mpy-cross`:
@@ -50,6 +46,6 @@ The resulting `hexcurrent.mpy` should then be copied into the consuming app's `E
 - The onboard INA226 reports bus voltage in millivolts and current in milliamps.
 - An optional flying lead can be used to probe a voltage point on the device under test while the app continues to log current and voltage samples.
 
-## Intended Consumer
+## Easy Insatalltion
 
-The first intended consumer is HexManager, which can vendor this repository as a git submodule and compile `hexcurrent.py` into `EEPROM/hexcurrent.mpy` for EEPROM programming.
+This EEPROM image is included in HexManager, which can vendor this repository as a git submodule and compile `hexcurrent.py` into `EEPROM/hexcurrent.mpy` for EEPROM programming.
