@@ -1,0 +1,6 @@
+{
+    "callable": "HexCurrentApp",
+    "name": "HexCurrent",
+    "category": "Badge",
+    "hidden": false
+}
