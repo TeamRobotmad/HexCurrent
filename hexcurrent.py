@@ -351,7 +351,7 @@ class SensorManager:
 class HexCurrentApp(app.App):         # pylint: disable=no-member
     """Monitor current and voltage from a HexCurrent INA226 sensor."""
 
-    VERSION = 1
+    VERSION = "0.1"
 
     def __init__(self, config=None):
         super().__init__()
@@ -833,10 +833,10 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
             f"Port:{port_label}",
             f"I:{current_ma if current_ma is not None else '--'}mA",
             f"V:{_format_voltage_mv(voltage_mv)}",
-            f"Dur:{self.capture_seconds}s",
+            #f"Dur:{self.capture_seconds}s",
             #self.settings["path"].label(),
         ]
-        colours = [_TITLE_COLOUR, _TEXT_COLOUR, _CURRENT_COLOUR, _VOLTAGE_COLOUR, _TEXT_COLOUR]
+        colours = [_TITLE_COLOUR, _TEXT_COLOUR, _CURRENT_COLOUR, _VOLTAGE_COLOUR]
         self.draw_message(ctx, lines, colours, label_font_size)
         button_labels(ctx, cancel_label="Back", confirm_label="Rec")
 
@@ -862,21 +862,21 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
 
         ctx.font_size = label_font_size
         if self._auto_done:
-            ctx.rgb(*_TEXT_COLOUR).move_to(-45, chart_top - 25).text("Complete")
+            ctx.rgb(*_TEXT_COLOUR).move_to(-45, chart_top - 40).text("Complete")
         else:
             progress = min(100, (self._auto_elapsed_ms * 100) // max(self.capture_seconds * 1000, 1))
-            ctx.rgb(*_TEXT_COLOUR).move_to(-45, chart_top - 25).text(f"Rec {progress}%")
+            ctx.rgb(*_TEXT_COLOUR).move_to(-45, chart_top - 40).text(f"Rec {progress}%")
 
         ctx.font_size = label_font_size - 8
         ctx.rgb(*_CURRENT_COLOUR).move_to(chart_left + 12, chart_top - 5).text(f"I:{self._auto_max_current_ma}mA")
         ctx.rgb(*_VOLTAGE_COLOUR).move_to(12, chart_top - 5).text(f"V:{_format_voltage_mv(self._auto_max_voltage_mv)}")
 
         if self._auto_done:
-            ctx.rgb(*_CURRENT_COLOUR).move_to(chart_left + 15, chart_bottom + 18).text("Current")
+            ctx.rgb(*_CURRENT_COLOUR).move_to(chart_left + 15, chart_bottom + 20).text("Current")
             ctx.rgb(*_VOLTAGE_COLOUR).move_to(chart_left + 15, chart_bottom + 38).text("Voltage")
             button_labels(ctx, cancel_label="Back", confirm_label="Manual", right_label="Save")
         else:
-            ctx.rgb(*_CURRENT_COLOUR).move_to(chart_left + 15, chart_bottom + 18).text(f"{self._auto_last_current_ma}mA")
+            ctx.rgb(*_CURRENT_COLOUR).move_to(chart_left + 15, chart_bottom + 20).text(f"{self._auto_last_current_ma}mA")
             ctx.rgb(*_VOLTAGE_COLOUR).move_to(chart_left + 15, chart_bottom + 38).text(_format_voltage_mv(self._auto_last_voltage_mv))
             button_labels(ctx, confirm_label="Stop", cancel_label="Back")
 
@@ -962,8 +962,8 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
             self.button_states.clear()
             self.set_menu(None)
             self.show_message(
-                ["HexCurrent", f"V{self.VERSION}", "INA226 current", "Badge or EEPROM", "By RobotMad"],
-                [_TITLE_COLOUR, _TEXT_COLOUR, _CURRENT_COLOUR, _VOLTAGE_COLOUR, _TEXT_COLOUR],
+                ["HexCurrent", f"V{self.VERSION}", "INA226 current", "& voltage monitor", "By RobotMad"],
+                [_TITLE_COLOUR, _TEXT_COLOUR, _CURRENT_COLOUR, _CURRENT_COLOUR, _TEXT_COLOUR],
             )
         elif item == MAIN_MENU_ITEMS[MENU_ITEM_EXIT]:
             self._exit_app()
