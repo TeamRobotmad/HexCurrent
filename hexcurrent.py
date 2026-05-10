@@ -31,8 +31,8 @@ _MIN_BADGEOS_VERSION = [1, 9, 0]
 SETTINGS_NAME_PREFIX = "hexcurrent"
 
 _NUM_HEXPANSION_SLOTS = 6
-_AUTO_RESULTS_FILENAME = "hexcurrent.csv"
-_AUTO_RESULTS_DEST_LABELS = ("badge FS", "hex FS")
+_AUTO_RESULTS_FILENAME = "current.csv"
+_AUTO_RESULTS_DEST_LABELS = ("Badge FS", "Hex FS")
 
 _DEFAULT_CAPTURE_SECONDS = 30
 _MIN_CAPTURE_SECONDS = 5
@@ -497,8 +497,10 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
         self._sample_sensor_in_background()
 
     def _candidate_ports(self):
+        # if a port is specified in the config then put this first in the list
+        # of ports to check before the others, otherwise check all ports in order
         if self.config is not None and getattr(self.config, "port", None) is not None:
-            return [self.config.port]
+            return [self.config.port] + [p for p in range(1, _NUM_HEXPANSION_SLOTS + 1) if p != self.config.port]
         return list(range(1, _NUM_HEXPANSION_SLOTS + 1))
 
     def _connect_monitor(self):
