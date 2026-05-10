@@ -402,8 +402,8 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
         self._auto_results = []
         self._auto_last_current_ma = 0
         self._auto_last_voltage_mv = 0
-        self._auto_max_current_ma = 1
-        self._auto_max_voltage_mv = 1
+        self._auto_max_current_ma = 0
+        self._auto_max_voltage_mv = 0
 
         self.settings["logging"] = MySetting(self.settings, _LOGGING, False, True)
         self.settings["path"] = MySetting(
@@ -573,8 +573,8 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
         current_ma = int(sample.get("mA", 0))
         voltage_mv = int(sample.get("mV", 0))
         self._auto_results.append((elapsed_ms, current_ma, voltage_mv))
-        self._auto_max_current_ma = max(self._auto_max_current_ma, abs(current_ma), 1)
-        self._auto_max_voltage_mv = max(self._auto_max_voltage_mv, abs(voltage_mv), 1)
+        self._auto_max_current_ma = max(self._auto_max_current_ma, abs(current_ma))
+        self._auto_max_voltage_mv = max(self._auto_max_voltage_mv, abs(voltage_mv))
 
     def _start_auto_capture(self):
         if self._ina226 is None and not self._connect_monitor():
@@ -585,8 +585,8 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
         self._auto_done = False
         self._auto_elapsed_ms = 0
         self._auto_results = []
-        self._auto_max_current_ma = max(abs(int(self._reading.get("mA", 0))), 1)
-        self._auto_max_voltage_mv = max(abs(int(self._reading.get("mV", 0))), 1)
+        self._auto_max_current_ma = abs(int(self._reading.get("mA", 0)))
+        self._auto_max_voltage_mv = abs(int(self._reading.get("mV", 0)))
         if self._reading:
             self._record_auto_sample(0, self._reading)
         self.refresh = True
@@ -605,8 +605,8 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
         self._auto_done = False
         self._auto_elapsed_ms = 0
         self._auto_results = []
-        self._auto_max_current_ma = 1
-        self._auto_max_voltage_mv = 1
+        self._auto_max_current_ma = 0
+        self._auto_max_voltage_mv = 0
         self.refresh = True
 
     def _start_monitor_mode(self):
@@ -838,8 +838,8 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
     def _draw_auto_capture(self, ctx):
         chart_left = -90
         chart_right = 90
-        chart_top = -65
-        chart_bottom = 35
+        chart_top = -45
+        chart_bottom = 55
         chart_w = chart_right - chart_left
         chart_h = chart_bottom - chart_top
 
@@ -868,12 +868,13 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
 
         if self._auto_done:
             ctx.rgb(*_CURRENT_COLOUR).move_to(chart_left + 15, chart_bottom + 18).text("Current")
-            ctx.rgb(*_VOLTAGE_COLOUR).move_to(10, chart_bottom + 18).text("Voltage")
+            ctx.rgb(*_VOLTAGE_COLOUR).move_to(chart_left + 15, chart_bottom + 38).text("Voltage")
             button_labels(ctx, cancel_label="Back", confirm_label="Manual", right_label="Save")
         else:
             ctx.rgb(*_CURRENT_COLOUR).move_to(chart_left + 15, chart_bottom + 18).text(f"{self._auto_last_current_ma}mA")
-            ctx.rgb(*_VOLTAGE_COLOUR).move_to(10, chart_bottom + 18).text(_format_voltage_mv(self._auto_last_voltage_mv))
-            button_labels(ctx, confirm_label="Stop") # no space on screen for "Back" when recording
+            ctx.rgb(*_VOLTAGE_COLOUR).move_to(chart_left + 15, chart_bottom + 38).text(_format_voltage_mv(self._auto_last_voltage_mv))
+            button_labels(ctx, confirm_label="Stop", cancel_label="Back")
+
 
     def _plot_auto_series(self, ctx, chart_left, chart_bottom, chart_w, chart_h, duration_ms, max_value, value_index, colour):
         if len(self._auto_results) == 0 or max_value <= 0 or duration_ms <= 0:
