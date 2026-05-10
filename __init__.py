@@ -1,1 +1,1 @@
-from .app import HexCurrentApp
+from .hexcurrent import HexCurrentApp
