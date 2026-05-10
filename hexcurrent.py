@@ -1,4 +1,7 @@
 """HexCurrent Hexpansion App."""
+# To install on a badge:
+# Create a directory named "TeamRobotmad_hexCurrent" on the badge's internal storage under apps
+# Copy the app.mpy file to this directory
 
 import asyncio
 import time
