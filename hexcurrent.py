@@ -32,7 +32,7 @@ SETTINGS_NAME_PREFIX = "hexcurrent"
 
 _NUM_HEXPANSION_SLOTS = 6
 _AUTO_RESULTS_FILENAME = "hexcurrent.csv"
-_AUTO_RESULTS_DEST_LABELS = ("badge fs", "hex fs")
+_AUTO_RESULTS_DEST_LABELS = ("badge FS", "hex FS")
 
 _DEFAULT_CAPTURE_SECONDS = 30
 _MIN_CAPTURE_SECONDS = 5
@@ -200,7 +200,7 @@ class SensorBase:
     def _write_u16_be(self, reg, value):
         self._write_reg(reg, bytes([(value >> 8) & 0xFF, value & 0xFF]))
 
-    def read_sample_if_ready(self):
+    def read_sample_if_ready(self) -> dict | None:
         return None
 
     def _init(self):
@@ -249,7 +249,7 @@ class INA226(SensorBase):
     """INA226 current and voltage sensor driver."""
 
     I2C_ADDR = 0x40
-    I2C_ADDRS = tuple(range(0x40, 0x43))
+    I2C_ADDRS = tuple(range(0x40, 0x50))
     NAME = "INA226"
     READ_INTERVAL_MS = 150
 
@@ -430,6 +430,13 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
         eventbus.on_async(HexpansionMountedEvent, self._handle_mounted, self)
         eventbus.on_async(HexpansionRemovalEvent, self._handle_removal, self)
 
+        if self.config is None:
+            # running from badge rather than hexpansion EEPROM
+            # We start with focus on launch, without an event emmited
+            # This version is compatible with the simulator
+            asyncio.get_event_loop().create_task(self._gain_focus(RequestForegroundPushEvent(self)))
+            self._foreground = True
+
         self.show_message(
             ["HexCurrent", f"V{self.VERSION}", "INA226 Monitor", "By RobotMad"],
             [(0.2, 1.0, 0.2), _TITLE_COLOUR, _TEXT_COLOUR, _TEXT_COLOUR],
@@ -482,7 +489,7 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
 
     def _background_update(self, _delta):
         if self._auto_mode and not self._auto_done:
-            self._auto_elapsed_ms = min(self._auto_elapsed_ms + _delta, self.capture_seconds * 1000)
+            self._auto_elapsed_ms = self._auto_elapsed_ms + _delta
         if self._ina226 is None:
             if self._auto_mode and not self._auto_done and self._auto_elapsed_ms >= self.capture_seconds * 1000:
                 self._finish_auto_capture()
@@ -822,9 +829,9 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
             f"I:{current_ma if current_ma is not None else '--'}mA",
             f"V:{_format_voltage_mv(voltage_mv)}",
             f"Dur:{self.capture_seconds}s",
-            self.settings["path"].label(),
+            #self.settings["path"].label(),
         ]
-        colours = [_TITLE_COLOUR, _TEXT_COLOUR, _CURRENT_COLOUR, _VOLTAGE_COLOUR, _TEXT_COLOUR, _TEXT_COLOUR]
+        colours = [_TITLE_COLOUR, _TEXT_COLOUR, _CURRENT_COLOUR, _VOLTAGE_COLOUR, _TEXT_COLOUR]
         self.draw_message(ctx, lines, colours, label_font_size)
         button_labels(ctx, cancel_label="Back", confirm_label="Rec")
 
@@ -866,7 +873,7 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
         else:
             ctx.rgb(*_CURRENT_COLOUR).move_to(chart_left + 15, chart_bottom + 18).text(f"{self._auto_last_current_ma}mA")
             ctx.rgb(*_VOLTAGE_COLOUR).move_to(10, chart_bottom + 18).text(_format_voltage_mv(self._auto_last_voltage_mv))
-            button_labels(ctx, cancel_label="Back", confirm_label="Stop")
+            button_labels(ctx, confirm_label="Stop") # no space on screen for "Back" when recording
 
     def _plot_auto_series(self, ctx, chart_left, chart_bottom, chart_w, chart_h, duration_ms, max_value, value_index, colour):
         if len(self._auto_results) == 0 or max_value <= 0 or duration_ms <= 0:
@@ -913,7 +920,7 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
         self.current_state = STATE_MENU
         self.refresh = True
 
-    def set_menu(self, menu_name="main"):
+    def set_menu(self, menu_name: str | None ="main"):
         if self.menu is not None:
             try:
                 self.menu._cleanup()        # pylint: disable=protected-access
