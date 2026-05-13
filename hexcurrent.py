@@ -6,6 +6,12 @@
 import asyncio
 import time
 
+try:
+    from micropython import const
+except ImportError:
+    # CPython / simulator fallback – const() is an identity function on MicroPython
+    const = lambda x: x  # noqa: E731
+
 import ota
 import settings as platform_settings
 import vfs
@@ -29,38 +35,36 @@ from system.scheduler.events import (
 
 import app
 
+PRE= "hexcurrent"
 
-_MIN_BADGEOS_VERSION = [1, 9, 0]
-SETTINGS_NAME_PREFIX = "hexcurrent"
-
-_NUM_HEXPANSION_SLOTS = 6
-_CAPTURE_DATA_FILENAME = "current.csv"
+SLOTS = const(6)
+FILE = "current.csv"
 _FILE_DEST_LABELS = ("Badge FS", "Hex FS")
 
-_DEFAULT_CAPTURE_SECONDS = 30
-_MIN_CAPTURE_SECONDS = 5
-_MAX_CAPTURE_SECONDS = 600
+_DEFAULT_CAPTURE_SECONDS = const(30)
+_MIN_CAPTURE_SECONDS = const(5)
+_MAX_CAPTURE_SECONDS = const(600)
 
-STATE_MENU = 0
-STATE_MESSAGE = 1
-STATE_SETTINGS = 2
-STATE_MONITOR = 3
+STATE_MENU = const(0)
+STATE_MESSAGE = const(1)
+STATE_SETTINGS = const(2)
+STATE_MONITOR = const(3)
 
 MINIMISE_VALID_STATES = [STATE_MENU, STATE_MESSAGE]
 
 MAIN_MENU_ITEMS = ["Monitor", "Settings", "About", "Exit"]
-MENU_ITEM_MONITOR = 0
-MENU_ITEM_SETTINGS = 1
-MENU_ITEM_ABOUT = 2
-MENU_ITEM_EXIT = 3
+MENU_ITEM_MONITOR = const(0)
+MENU_ITEM_SETTINGS = const(1)
+MENU_ITEM_ABOUT = const(2)
+MENU_ITEM_EXIT = const(3)
 
-DEFAULT_BACKGROUND_UPDATE_PERIOD = 100
+DEFAULT_BACKGROUND_UPDATE_PERIOD = const(100)
 _LOGGING = True
 
-_AUTO_REPEAT_MS = 200
-_AUTO_REPEAT_COUNT_THRES = 10
-_AUTO_REPEAT_SPEED_LEVEL_MAX = 4
-_AUTO_REPEAT_LEVEL_MAX = 3
+_AUTO_REPEAT_MS = const(200)
+_AUTO_REPEAT_COUNT_THRES = const(10)
+_AUTO_REPEAT_SPEED_LEVEL_MAX = const(4)
+_AUTO_REPEAT_LEVEL_MAX = const(3)
 
 # avoid whiteas that is used for button labels (and we have no control over this)
 _CURRENT_COLOUR = (0.0, 1.0, 0.5)
@@ -71,7 +75,7 @@ _RATE_COLOUR = (1.0, 0.5, 0.5)
 
 
 def _setting_key(name: str) -> str:
-    return f"{SETTINGS_NAME_PREFIX}.{name}"
+    return f"{PRE}.{name}"
 
 
 def _format_voltage_mv(voltage_mv: int | None) -> str:
@@ -218,32 +222,32 @@ class SensorBase:
         return
 
 
-_REG_CONFIGURATION = 0x00
-_REG_BUS_VOLTAGE = 0x02
-_REG_CURRENT = 0x04
-_REG_CALIBRATION = 0x05
-_REG_MASK_ENABLE = 0x06
-_REG_MANUFACTURER_ID = 0xFE
+_REG_CONFIGURATION = const(0x00)
+_REG_BUS_VOLTAGE = const(0x02)
+_REG_CURRENT = const(0x04)
+_REG_CALIBRATION = const(0x05)
+_REG_MASK_ENABLE = const(0x06)
+_REG_MANUFACTURER_ID = const(0xFE)
 
-_CFG_AVG_SHIFT = 9
-_CFG_VBUSCT_SHIFT = 6
-_CFG_VSHCT_SHIFT = 3
-_CFG_MODE_SHIFT = 0
+_CFG_AVG_SHIFT = const(9)
+_CFG_VBUSCT_SHIFT = const(6)
+_CFG_VSHCT_SHIFT = const(3)
+_CFG_MODE_SHIFT = const(0)
 
-_CFG_AVG_16 = 0b010
-_CFG_CT_1100US = 0b100
-_CFG_CT_8244US = 0b111
-_CFG_MODE_POWER_DOWN = 0b000
-_CFG_MODE_SHUNT_BUS_CONT = 0b111
+_CFG_AVG_16 = const(0b010)
+_CFG_CT_1100US = const(0b100)
+_CFG_CT_8244US = const(0b111)
+_CFG_MODE_POWER_DOWN = const(0b000)
+_CFG_MODE_SHUNT_BUS_CONT = const(0b111)
 
-_MASK_CNVR = 0x0400
-_MASK_CVRF = 0x0008
-_MASK_OVF = 0x0004
-_MASK_LEN = 0x0001
+_MASK_CNVR = const(0x0400)
+_MASK_CVRF = const(0x0008)
+_MASK_OVF = const(0x0004)
+_MASK_LEN = const(0x0001)
 
-_MANUFACTURER_ID_TI = 0x5449
-_CALIBRATION_VALUE = 0x0200
-_CURRENT_LSB_UA = 100
+_MANUFACTURER_ID_TI = const(0x5449)
+_CALIBRATION_VALUE = const(0x0200)
+_CURRENT_LSB_UA = const(100)
 
 _DEFAULT_CONFIGURATION = (
     (_CFG_AVG_16 << _CFG_AVG_SHIFT)
@@ -362,7 +366,7 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
         super().__init__()
 
         try:
-            if self._parse_version(ota.get_version()) < _MIN_BADGEOS_VERSION:
+            if self._parse_version(ota.get_version()) < [1, 9, 0]:
                 raise RuntimeError("HexCurrent requires BadgeOS upgrade")
         except Exception as exc:      # pylint: disable=broad-exception-caught
             print(f"HC:Version check failed {exc}")
@@ -416,19 +420,21 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
         self._max_voltage_mv = 0
 
         self.settings["logging"] = MySetting(self.settings, _LOGGING, False, True)
-        self.settings["path"] = MySetting(
-            self.settings,
-            0,
-            0,
-            len(_FILE_DEST_LABELS) - 1,
-            labels=_FILE_DEST_LABELS,
-        )
+        self.settings["rate_hz"] = MySetting(self.settings, 1000 // self._ina226.READ_INTERVAL_MS, 1, 20)
         self.settings["duration_s"] = MySetting(
             self.settings,
             _DEFAULT_CAPTURE_SECONDS,
             _MIN_CAPTURE_SECONDS,
             _MAX_CAPTURE_SECONDS,
         )
+        if self.config is None:
+            self.settings["path"] = MySetting(
+                self.settings,
+                0,
+                0,
+                len(_FILE_DEST_LABELS) - 1,
+                labels=_FILE_DEST_LABELS,
+            )
         self.update_settings()
 
         location = f"port {self._monitor_port}" if self._monitor_port is not None else "badge install"
@@ -510,8 +516,8 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
         # if a port is specified in the config then put this first in the list
         # of ports to check before the others, otherwise check all ports in order
         if self.config is not None and getattr(self.config, "port", None) is not None:
-            return [self.config.port] + [p for p in range(1, _NUM_HEXPANSION_SLOTS + 1) if p != self.config.port]
-        return list(range(1, _NUM_HEXPANSION_SLOTS + 1))
+            return [self.config.port] + [p for p in range(1, SLOTS + 1) if p != self.config.port]
+        return list(range(1, SLOTS + 1))
 
     def _connect_monitor(self):
         if self._ina226 is not None:
@@ -531,7 +537,7 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
             self._sensor_mgr = mgr
             self._ina226 = sensor
             self._monitor_port = port
-            self.update_period = mgr.read_interval
+            self.update_period = 1000 // self.settings["rate_hz"].v if "rate_hz" in self.settings else sensor.read_interval
             sample = sensor.read_sample_if_ready()
             if sample is not None:
                 self._apply_reading(sample)
@@ -556,7 +562,7 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
         self._reading = {}
         self.update_period = DEFAULT_BACKGROUND_UPDATE_PERIOD
         if clear_capture:
-            self._enter_manual_mode()
+            self._clear_capture()
 
     def _apply_reading(self, sample):
         current_ma = int(sample.get("mA", 0))
@@ -617,8 +623,8 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
         self._save_capture_data_csv()
         self.refresh = True
 
-    def _enter_manual_mode(self):
-        print("HC:Entering manual mode")
+    def _clear_capture(self):
+        print("HC:clearing capture data")
         self._show_chart = False
         self._capture_mode = False
         self._capture_done = False
@@ -632,10 +638,6 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
     def _enter_background_mode(self):
         # if not already capturing then start now
         print("HC:Entering background mode")
-        if not self._capture_mode:
-            #if self.logging:
-            print("HC:auto starting auto capture")
-            self._start_capture()
         # minimise app to run in background while capturing
         self.minimise()
 
@@ -657,6 +659,8 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
 
     def _leave_monitor_mode(self):
         print("HC:Leaving monitor mode")
+        if self._capture_mode and not self._capture_done:
+            self._finish_capture()
         self._disconnect_monitor(clear_capture=True)
         self.return_to_menu()
 
@@ -704,8 +708,8 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
             mountpoint, mounted_here = self._mount_current_fs()
             if mountpoint is None:
                 return None, None, False
-            return f"{mountpoint}/{_CAPTURE_DATA_FILENAME}", mountpoint, mounted_here
-        return f"/{_CAPTURE_DATA_FILENAME}", None, False
+            return f"{mountpoint}/{FILE}", mountpoint, mounted_here
+        return f"/{FILE}", None, False
 
     def _save_capture_data_csv(self):
         if not self._capture_data and not self._unsaved_data:
@@ -806,35 +810,35 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
             self._leave_monitor_mode()
             return
 
-        if not self._capture_mode:
-            if self.button_states.get(BUTTON_TYPES["CONFIRM"]):
-                self.button_states.clear()
-                self._start_capture()
-                self._show_chart = True
-            return
-
-        if not self._capture_done:
-            if self.button_states.get(BUTTON_TYPES["CONFIRM"]):
-                self.button_states.clear()
-                self._finish_capture()
-            return
-
         if self.button_states.get(BUTTON_TYPES["CONFIRM"]):
             self.button_states.clear()
-            self._enter_manual_mode()
-        elif self.button_states.get(BUTTON_TYPES["RIGHT"]):
-            self.button_states.clear()
-            if self._unsaved_data:
-                self._save_capture_data_csv()
-            else:
+            if not self._capture_mode:
                 self._start_capture()
-        elif self.button_states.get(BUTTON_TYPES["LEFT"]):
+                self._show_chart = True
+            elif self._show_chart:
+                self._show_chart = False
+            else:
+                self._show_chart = True
+            self.refresh = True
+            return
+
+        if self.button_states.get(BUTTON_TYPES["RIGHT"]):
             self.button_states.clear()
-            self._enter_background_mode()
-        elif self.button_states.get(BUTTON_TYPES["DOWN"]):
+            if not self._capture_mode:
+                self._start_capture()
+            elif not self._capture_done:
+                self._finish_capture()
+            else:
+                self._clear_capture()
+            self.refresh = True
+            return
+
+        if self.button_states.get(BUTTON_TYPES["LEFT"]):
             self.button_states.clear()
-            print("HC:going to background mode (dummy on DOWN for now)")
-            #self._enter_background_mode()
+            if not self._capture_mode:
+                self._start_capture()
+            if not self._capture_done:
+                self._enter_background_mode()
 
 
     def draw(self, ctx):
@@ -869,6 +873,11 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
             self._draw_manual_monitor(ctx)
 
     def _draw_manual_monitor(self, ctx):
+        ctx.font_size = label_font_size
+        if self._capture_mode and not self._capture_done:
+            progress = min(100, (self._capture_elapsed_ms * 100) // max(self.capture_seconds * 1000, 1))
+            ctx.rgb(*_TEXT_COLOUR).move_to(-45, 85).text(f"Rec {progress}%")
+
         current_ma = self._reading.get("mA")
         voltage_mv = self._reading.get("mV")
         port_label = self._monitor_port if self._monitor_port is not None else "--"
@@ -881,11 +890,17 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
         ]
         colours = [_TITLE_COLOUR, _TEXT_COLOUR, _CURRENT_COLOUR, _VOLTAGE_COLOUR, _RATE_COLOUR]
         self.draw_message(ctx, lines, colours, label_font_size)
-        if self._unsaved_data:
-            right_label = "Save"
+
+        if self._capture_done:
+            right_label = "Clear"
+            left_label = None
         else:
-            right_label = "Record"
-        button_labels(ctx, cancel_label="Back", confirm_label="Chart", right_label=right_label, left_label="Background")
+            left_label = "Background"
+            if self._capture_mode:
+                right_label = "Stop"
+            else:
+                right_label = "Record"
+        button_labels(ctx, cancel_label="Back", confirm_label="Chart", right_label=right_label, left_label=left_label)
 
 
     def _draw_chart_monitor(self, ctx):
@@ -910,27 +925,28 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
 
         ctx.font_size = label_font_size
         if self._capture_done:
-            ctx.rgb(*_TEXT_COLOUR).move_to(-45, chart_top - 40).text("Chart")
+            ctx.rgb(*_TITLE_COLOUR).move_to(-30, chart_top - 45).text("Chart")
         else:
             progress = min(100, (self._capture_elapsed_ms * 100) // max(self.capture_seconds * 1000, 1))
             ctx.rgb(*_TEXT_COLOUR).move_to(-45, chart_top - 40).text(f"Rec {progress}%")
 
         ctx.font_size = label_font_size - 8
-        ctx.rgb(*_CURRENT_COLOUR).move_to(chart_left + 12, chart_top - 5).text(f"I:{self._max_current_ma}mA")
+        ctx.rgb(*_TEXT_COLOUR).move_to(-15, chart_top - 5).text("Max")
+        ctx.rgb(*_CURRENT_COLOUR).move_to(chart_left + 10, chart_top - 5).text(f"I:{self._max_current_ma}mA")
         ctx.rgb(*_VOLTAGE_COLOUR).move_to(32, chart_top - 5).text(f"V:{_format_voltage_mv(self._max_voltage_mv)}")
 
         if self._capture_done:
-            ctx.rgb(*_CURRENT_COLOUR).move_to(chart_left + 15, chart_bottom + 20).text("Current")
-            ctx.rgb(*_VOLTAGE_COLOUR).move_to(chart_left + 15, chart_bottom + 38).text("Voltage")
-            if self._unsaved_data:
-                right_label = "Save"
-            else:
-                right_label = None
-            button_labels(ctx, cancel_label="Back", confirm_label="Manual", right_label=right_label, left_label="Background")
+            right_label = "Clear"
+            left_label = None
+            ctx.rgb(*_TEXT_COLOUR).move_to(chart_left + 30, chart_bottom + 45).text("Key:")
+            ctx.rgb(*_CURRENT_COLOUR).move_to(-30, chart_bottom + 45).text("Current")
+            ctx.rgb(*_VOLTAGE_COLOUR).move_to(-30, chart_bottom + 63).text("Voltage")
         else:
-            ctx.rgb(*_CURRENT_COLOUR).move_to(chart_left + 65, chart_bottom + 20).text(f"{self._last_current_ma}mA")
-            ctx.rgb(*_VOLTAGE_COLOUR).move_to(chart_left + 65, chart_bottom + 38).text(_format_voltage_mv(self._last_voltage_mv))
-            button_labels(ctx, confirm_label="Stop", cancel_label="Back", left_label="Background")
+            right_label = "Stop"
+            left_label = "Background"
+            ctx.rgb(*_CURRENT_COLOUR).move_to(chart_left + 65, chart_bottom + 40).text(f"{self._last_current_ma}mA")
+            ctx.rgb(*_VOLTAGE_COLOUR).move_to(chart_left + 65, chart_bottom + 60).text(_format_voltage_mv(self._last_voltage_mv))
+        button_labels(ctx, cancel_label="Back", confirm_label="Data", right_label=right_label, left_label=left_label)
 
 
     def _plot_capture_series(self, ctx, chart_left, chart_bottom, chart_w, chart_h, duration_ms, max_value, value_index, colour):
