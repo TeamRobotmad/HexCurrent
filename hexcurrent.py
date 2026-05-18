@@ -379,8 +379,8 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
         self.current_state = STATE_MENU
         self.previous_state = self.current_state
         self.update_period = DEFAULT_BACKGROUND_UPDATE_PERIOD
-        self.refresh = True
 
+        self.refresh = True
         self.notification = None
         self.message = []
         self.message_colours = []
@@ -420,7 +420,7 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
         self._max_voltage_mv = 0
 
         self.settings["logging"] = MySetting(self.settings, _LOGGING, False, True)
-        self.settings["rate_hz"] = MySetting(self.settings, 1000 // self._ina226.READ_INTERVAL_MS, 1, 20)
+        self.settings["rate_hz"] = MySetting(self.settings, 4, 1, 20)
         self.settings["duration_s"] = MySetting(
             self.settings,
             _DEFAULT_CAPTURE_SECONDS,
