@@ -37,7 +37,7 @@ import app
 
 PRE= "hexcurrent"
 
-SLOTS = const(6)
+_SLOTS = const(6)
 FILE = "current.csv"
 _FILE_DEST_LABELS = ("Badge FS", "Hex FS")
 
@@ -516,8 +516,8 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
         # if a port is specified in the config then put this first in the list
         # of ports to check before the others, otherwise check all ports in order
         if self.config is not None and getattr(self.config, "port", None) is not None:
-            return [self.config.port] + [p for p in range(1, SLOTS + 1) if p != self.config.port]
-        return list(range(1, SLOTS + 1))
+            return [self.config.port] + [p for p in range(1, _SLOTS + 1) if p != self.config.port]
+        return list(range(1, _SLOTS + 1))
 
     def _connect_monitor(self):
         if self._ina226 is not None:
