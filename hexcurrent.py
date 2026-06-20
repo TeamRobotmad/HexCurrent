@@ -1109,7 +1109,7 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
             version, _pre = version.split("-", 1)
         return [int(item) if item.isdigit() else item for item in version.strip("v").split(".")]
 
-    def deinitialise(self):
+    def deinit(self):
         eventbus.remove(HexpansionMountedEvent, self._handle_mounted, self)
         eventbus.remove(HexpansionRemovalEvent, self._handle_removal, self)
         eventbus.remove(RequestForegroundPushEvent, self._gain_focus, self)
@@ -1150,7 +1150,7 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
         try:
             if event.app is self:
                 print("HC:Stopping app")
-                self.deinitialise()
+                self.deinit()
         except (AttributeError, TypeError):
             pass
 
