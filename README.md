@@ -1,6 +1,6 @@
 # HexCurrent
 
-Standalone EEPROM-side app source for the Team RobotMad HexCurrent hexpansion.
+This application works as a main badge app or a standalone EEPROM-side app for the Team RobotMad HexCurrent hexpansion.
 
 HexCurrent is intended for badge hexpansion developers who need to measure real-world current draw from a Hexpansion Under Test. The board sits between the badge and the device under test, passes through the normal hexpansion signals, and exposes an INA226 so the companion app can show live current and voltage and record time-series capture data.
 
