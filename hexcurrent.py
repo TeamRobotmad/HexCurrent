@@ -360,7 +360,7 @@ class SensorManager:
 class HexCurrentApp(app.App):         # pylint: disable=no-member
     """Monitor current and voltage from a HexCurrent INA226 sensor."""
 
-    VERSION = "1.0"
+    VERSION = 1
 
     def __init__(self, config: HexpansionConfig | None = None):
         super().__init__()
