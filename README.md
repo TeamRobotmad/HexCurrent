@@ -35,7 +35,7 @@ The current implementation provides:
 Compile the EEPROM app with `mpy-cross`:
 
 ```bash
-mpy-cross -v hexcurrent.py -o hexcurrent.mpy
+mpy-cross -march=extensawin -v hexcurrent.py -o hexcurrent.mpy
 ```
 
 The resulting `hexcurrent.mpy` should then be copied into the consuming app's `EEPROM/` directory. When a host app writes that file to a hexpansion EEPROM it is renamed to `app.mpy` on the EEPROM so BadgeOS will discover it automatically.
