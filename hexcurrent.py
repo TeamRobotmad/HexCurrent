@@ -1114,6 +1114,7 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
         eventbus.remove(HexpansionRemovalEvent, self._handle_removal, self)
         eventbus.remove(RequestForegroundPushEvent, self._gain_focus, self)
         eventbus.remove(RequestForegroundPopEvent, self._lose_focus, self)
+        eventbus.remove(RequestStopAppEvent, self._handle_stop_app, self)
         self._disconnect_monitor(clear_capture=True)
         return True
 
@@ -1153,6 +1154,9 @@ class HexCurrentApp(app.App):         # pylint: disable=no-member
                 self.deinit()
         except (AttributeError, TypeError):
             pass
+
+
+
 
 
 __app_export__ = HexCurrentApp
